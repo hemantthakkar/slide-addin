@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authenticating…</title>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+</head>
+<body>
+  <script>
+    const msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: '64f2d2d0-6c34-4af1-95ec-114f230be16b',
+        authority: 'https://login.microsoftonline.com/common',
+        redirectUri: 'https://hemantthakkar.github.io/slide-addin/'
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+    });
+    msalInstance.handleRedirectPromise().catch(console.error);
+  </script>
+</body>
+</html>

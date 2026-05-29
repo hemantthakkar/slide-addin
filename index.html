@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Slide Library</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+  <style>
+    :root {
+      --brand: #0078D4;
+      --brand-dark: #005A9E;
+      --brand-light: #EFF6FC;
+      --surface: #ffffff;
+      --surface2: #F5F5F5;
+      --border: #E0E0E0;
+      --text: #1a1a1a;
+      --text2: #555;
+      --text3: #888;
+      --danger: #D13438;
+      --success: #107C10;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--surface); color: var(--text); font-size: 13px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Header */
+    .header { background: var(--brand); color: white; padding: 10px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .header-logo { width: 20px; height: 20px; }
+    .header h1 { font-size: 14px; font-weight: 600; flex: 1; }
+    .header-user { font-size: 11px; opacity: 0.85; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-logout { background: rgba(255,255,255,0.2); border: none; color: white; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+    .btn-logout:hover { background: rgba(255,255,255,0.35); }
+
+    /* Screens */
+    .screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+    .screen.active { display: flex; }
+
+    /* Login */
+    #login-screen { align-items: center; justify-content: center; padding: 20px; text-align: center; }
+    .login-icon { width: 56px; height: 56px; background: var(--brand-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+    .login-icon svg { width: 28px; height: 28px; color: var(--brand); }
+    .login-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .login-sub { color: var(--text2); font-size: 12px; margin-bottom: 20px; line-height: 1.5; }
+    .btn-signin { background: var(--brand); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-signin:hover { background: var(--brand-dark); }
+    .btn-signin svg { width: 16px; height: 16px; }
+    .error-msg { color: var(--danger); font-size: 11px; margin-top: 10px; padding: 8px; background: #FFF0F0; border-radius: 4px; display: none; }
+
+    /* Toolbar */
+    .toolbar { padding: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 6px; }
+    .search-wrap { position: relative; flex: 1; }
+    .search-wrap input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px 6px 28px; font-size: 12px; background: var(--surface2); }
+    .search-wrap input:focus { outline: none; border-color: var(--brand); background: white; }
+    .search-icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+    .search-icon svg { width: 13px; height: 13px; display: block; }
+    .btn-icon { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; cursor: pointer; color: var(--text2); display: flex; align-items: center; }
+    .btn-icon:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+    .btn-icon svg { width: 14px; height: 14px; display: block; }
+
+    /* Site bar */
+    .site-bar { padding: 6px 8px; background: var(--surface2); border-bottom: 1px solid var(--border); display: none; gap: 6px; align-items: center; flex-shrink: 0; }
+    .site-bar.visible { display: flex; }
+    .site-bar input { flex: 1; border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px; font-size: 11px; }
+    .site-bar input:focus { outline: none; border-color: var(--brand); }
+    .btn-apply { background: var(--brand); color: white; border: none; border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+
+    /* Status */
+    .status { padding: 6px 8px; font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 6px; flex-shrink: 0; border-bottom: 1px solid var(--border); min-height: 28px; }
+    .spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Files List */
+    #files-view { flex: 1; overflow-y: auto; padding: 6px; }
+    .file-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; cursor: pointer; transition: all 0.12s; }
+    .file-item:hover { border-color: var(--brand); background: var(--brand-light); }
+    .file-badge { background: #D24726; color: white; font-size: 9px; font-weight: 700; padding: 3px 5px; border-radius: 4px; flex-shrink: 0; letter-spacing: 0.3px; }
+    .file-details { flex: 1; overflow: hidden; }
+    .file-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-meta { font-size: 10px; color: var(--text3); margin-top: 1px; }
+    .file-arrow { color: var(--text3); flex-shrink: 0; }
+    .file-arrow svg { width: 13px; height: 13px; display: block; }
+
+    /* Slides View */
+    #slides-view { flex: 1; overflow: hidden; display: none; flex-direction: column; }
+    #slides-view.active { display: flex; }
+    .slides-header { padding: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .btn-back { background: none; border: none; cursor: pointer; color: var(--brand); font-size: 12px; display: flex; align-items: center; gap: 4px; padding: 0; font-weight: 600; }
+    .btn-back svg { width: 14px; height: 14px; }
+    .slides-title { flex: 1; font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text2); }
+    .slides-search { padding: 6px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; position: relative; }
+    .slides-search input { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px 6px 26px; font-size: 12px; background: var(--surface2); }
+    .slides-search input:focus { outline: none; border-color: var(--brand); }
+    .slides-search .si { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+    .slides-search .si svg { width: 12px; height: 12px; display: block; }
+    .slides-grid { flex: 1; overflow-y: auto; padding: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-content: start; }
+    .slide-card { border: 1.5px solid var(--border); border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.12s; }
+    .slide-card:hover { border-color: var(--brand); box-shadow: 0 2px 8px rgba(0,120,212,0.15); }
+    .slide-thumb { aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; position: relative; font-size: 10px; color: #3d5a99; font-weight: 600; padding: 8px; text-align: center; line-height: 1.3; }
+    .slide-num-badge { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: 700; color: var(--text3); background: white; border-radius: 3px; padding: 1px 4px; border: 1px solid var(--border); }
+    .slide-footer { padding: 5px 7px; background: white; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+    .slide-label { font-size: 10px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-insert { background: var(--brand); color: white; border: none; border-radius: 3px; padding: 3px 7px; font-size: 10px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .btn-insert:hover { background: var(--brand-dark); }
+    .slides-footer { padding: 8px; border-top: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 6px; }
+    .btn-full { flex: 1; background: var(--brand); color: white; border: none; border-radius: 6px; padding: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-full:hover { background: var(--brand-dark); }
+    .btn-full svg { width: 13px; height: 13px; }
+    .btn-sp { background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .btn-sp:hover { border-color: var(--brand); color: var(--brand); }
+    .btn-sp svg { width: 13px; height: 13px; }
+
+    /* Empty */
+    .empty { text-align: center; padding: 30px 16px; color: var(--text3); }
+    .empty svg { width: 36px; height: 36px; margin-bottom: 8px; opacity: 0.4; }
+    .empty p { font-size: 12px; line-height: 1.5; }
+
+    /* Toast */
+    .toast { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+    .toast.show { opacity: 1; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <svg class="header-logo" viewBox="0 0 20 20" fill="none">
+    <rect x="1" y="3" width="18" height="14" rx="2" fill="rgba(255,255,255,0.3)"/>
+    <rect x="2.5" y="4.5" width="15" height="11" rx="1.5" fill="white"/>
+    <rect x="4" y="6.5" width="5" height="4" rx="0.5" fill="#D24726"/>
+    <rect x="4" y="12" width="12" height="1" rx="0.5" fill="#D24726" opacity="0.3"/>
+    <rect x="10.5" y="6.5" width="5" height="2" rx="0.5" fill="#D24726" opacity="0.4"/>
+  </svg>
+  <h1>Slide Library</h1>
+  <span class="header-user" id="header-user" style="display:none"></span>
+  <button class="btn-logout" id="btn-logout" style="display:none" onclick="logout()">Sign out</button>
+</div>
+
+<!-- Login -->
+<div class="screen active" id="login-screen">
+  <div class="login-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <rect x="2" y="3" width="20" height="14" rx="2"/>
+      <rect x="5" y="6" width="5" height="4" rx="0.5" fill="currentColor" stroke="none"/>
+      <path d="M8 21h8M12 17v4"/>
+    </svg>
+  </div>
+  <div class="login-title">Slide Library</div>
+  <div class="login-sub">Sign in with your Microsoft account to search and reuse slides from SharePoint.</div>
+  <button class="btn-signin" onclick="login()">
+    <svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+    Sign in with Microsoft
+  </button>
+  <div class="error-msg" id="login-error"></div>
+</div>
+
+<!-- Main App -->
+<div class="screen" id="app-screen">
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg></span>
+      <input type="text" id="main-search" placeholder="Search files…" oninput="filterFiles()" />
+    </div>
+    <button class="btn-icon" onclick="loadFiles()" title="Refresh">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+    </button>
+    <button class="btn-icon" onclick="toggleSiteBar()" title="Settings">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+    </button>
+  </div>
+  <div class="site-bar" id="site-bar">
+    <input type="text" id="site-url" placeholder="https://company.sharepoint.com/sites/name" />
+    <button class="btn-apply" onclick="applySite()">Apply</button>
+  </div>
+  <div class="status" id="status"><span class="spinner"></span> Loading files…</div>
+  <div id="files-view"></div>
+  <div id="slides-view">
+    <div class="slides-header">
+      <button class="btn-back" onclick="showFiles()">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>
+        Back
+      </button>
+      <span class="slides-title" id="slides-title"></span>
+    </div>
+    <div class="slides-search">
+      <span class="si"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg></span>
+      <input type="text" id="slide-search" placeholder="Search slides…" oninput="filterSlides()" />
+    </div>
+    <div class="slides-grid" id="slides-grid"></div>
+    <div class="slides-footer">
+      <button class="btn-full" onclick="downloadFile()">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        Download File
+      </button>
+      <button class="btn-sp" onclick="openInSharePoint()">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+        SharePoint
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
